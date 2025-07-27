@@ -1,0 +1,83 @@
+#cloud-config
+
+# Create a non-root user
+users:
+  - name: deployer
+    primary_group: deployer
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    groups: sudo, users
+    shell: /bin/bash
+    lock_passwd: false
+    ssh_authorized_keys:
+      - ${ssh_pub_key}
+
+# Update package index and install essential packages
+package_update: true
+package_upgrade: true
+packages:
+  - ufw
+  - fail2ban
+
+# Configure SSH for security
+ssh_pwauth: false  # Disable password authentication
+
+# Write SSH daemon configuration
+write_files:
+  - path: /etc/ssh/sshd_config.d/99-custom.conf
+    content: |
+      # Custom SSH security configuration
+      PermitRootLogin no
+      PasswordAuthentication no
+      PubkeyAuthentication yes
+      ChallengeResponseAuthentication no
+      UsePAM yes
+      X11Forwarding no
+      PrintMotd no
+      ClientAliveInterval 300
+      ClientAliveCountMax 2
+      MaxAuthTries 3
+      Protocol 2
+    permissions: '0644'
+    owner: root:root
+
+runcmd:
+  # Configure UFW firewall
+  - ufw --force enable
+  - ufw default deny incoming
+  - ufw default allow outgoing
+  - ufw allow ssh
+  - ufw allow 2233/tcp
+  
+  # Configure fail2ban for SSH protection
+  - systemctl enable fail2ban
+  - systemctl start fail2ban
+  
+  # Restart SSH service to apply new configuration  
+  - systemctl daemon-reload
+  - systemctl restart ssh.socket
+  - systemctl restart ssh
+  
+  # Set proper permissions for SSH directory
+  - mkdir -p /home/deployer/.ssh
+  - chmod 700 /home/deployer/.ssh
+  - chmod 600 /home/deployer/.ssh/authorized_keys
+  - chown -R deployer:deployer /home/deployer/.ssh
+
+  # Configure Ukrainian locale
+  - locale-gen uk_UA.UTF-8
+  - update-locale LANG=uk_UA.UTF-8 LC_ALL=uk_UA.UTF-8
+  - dpkg-reconfigure -f noninteractive locales
+
+  # Set timezone and enable NTP
+  - timedatectl set-timezone Europe/Kyiv
+  - timedatectl set-ntp on
+
+   # Set hostname
+  - hostnamectl set-hostname terraform-server
+
+# Reboot after setup 
+power_state:
+  mode: reboot
+  delay: "+1"
+  message: "Rebooting after cloud-init setup"
+  condition: true
