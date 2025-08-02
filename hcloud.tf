@@ -11,7 +11,7 @@ provider "hcloud" {
 }
 
 resource "hcloud_server" "server" {
-  name        = "sum"
+  name        = "terraform-server"
   image       = var.os_type
   server_type = var.server_type
   location    = var.location
@@ -22,6 +22,8 @@ resource "hcloud_server" "server" {
     ipv6_enabled = true
   }
   user_data = templatefile("./cloud-init.yaml", {
+    compose = base64encode(file(var.docker_compose_file))
+    vector  = base64encode(file(var.vector_config_file))
     ssh_pub_key = tls_private_key.pk-rsa.public_key_openssh
   })
 }

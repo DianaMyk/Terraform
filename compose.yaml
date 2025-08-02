@@ -1,0 +1,43 @@
+services:
+  homer:
+    image: b4bz/homer
+    container_name: homer
+    volumes:
+      - /homer:/www/assets
+    ports:
+      - "8080:8080"
+    user: 1000:1000
+    environment:
+      - INIT_ASSETS=1
+    restart: unless-stopped
+
+  victorialogs:
+    image: victoriametrics/victoria-logs:v1.25.0
+    container_name: victorialogs
+    ports:
+      - "9428:9428"
+    volumes:
+      - /victoria-logs/victoria-logs-data:/victoria-logs-data
+    command: ["-storageDataPath=victoria-logs-data", "-loggerFormat=json", "-syslog.listenAddr.tcp=0.0.0.0:8094"]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:9428/health"]
+      interval: 1s
+      timeout: 1s
+      retries: 10
+
+  vector:
+    image: timberio/vector:latest-debian
+    container_name: vector
+    ports:
+      - "8686:8686"
+    volumes:
+      - /home/deployer/docker/vector:/etc/vector:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/lib/docker:/var/lib/docker:ro
+    user: root
+    command: ["--config", "/etc/vector/vector.yaml"]
+    restart: unless-stopped
+    depends_on:
+      victorialogs:
+        condition: service_healthy

@@ -1,0 +1,37 @@
+data_dir: /var/lib/vector
+api:
+  enabled: true
+  address: 0.0.0.0:8686
+sources:
+  docker_logs:
+    type: docker_logs
+    include_containers:
+      - homer
+transforms:
+  msg_parser:
+    type: remap
+    inputs:
+      - docker_logs
+    source: |
+      ._msg = .message
+
+sinks:
+ http:
+    type: http
+    inputs:
+      - msg_parser
+    uri: http://victorialogs:9428/insert/jsonline
+    encoding:
+      codec: json
+    framing:
+      method: newline_delimited
+    compression: gzip
+    healthcheck:
+      enabled: false
+    request:
+      headers:
+        AccountID: '0'
+        ProjectID: '0'
+        VL-Stream-Fields: source_type,host,container_name,label.com.docker.compose.service
+        VL-Msg-Field: _msg
+        VL-Time-Field: timestamp

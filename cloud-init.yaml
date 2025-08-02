@@ -5,7 +5,7 @@ users:
   - name: deployer
     primary_group: deployer
     sudo: ALL=(ALL) NOPASSWD:ALL
-    groups: sudo, users
+    groups: sudo, users, docker
     shell: /bin/bash
     lock_passwd: false
     ssh_authorized_keys:
@@ -17,9 +17,13 @@ package_upgrade: true
 packages:
   - ufw
   - fail2ban
+  - ca-certificates
+  - curl
+  - gnupg
+  - lsb-release
 
 # Configure SSH for security
-ssh_pwauth: false  # Disable password authentication
+ssh_pwauth: false 
 
 # Write SSH daemon configuration
 write_files:
@@ -40,14 +44,46 @@ write_files:
     permissions: '0644'
     owner: root:root
 
+  - path: /etc/apt/keyrings/docker.gpg
+    encoding: base64
+    content: |
+      {{ }}
+
 runcmd:
+  - mkdir -p /home/deployer/.ssh
+  - chmod 700 /home/deployer/.ssh
+  - chmod 600 /home/deployer/.ssh/authorized_keys
+  - chown -R deployer:deployer /home/deployer/.ssh
+
+  - mkdir -p /etc/apt/keyrings
+  - curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor | tee /etc/apt/keyrings/docker.gpg > /dev/null
+  - chmod a+r /etc/apt/keyrings/docker.gpg
+  - echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" > /etc/apt/sources.list.d/docker.list
+  - apt-get update
+  - apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+  - systemctl enable docker
+  - systemctl start docker
+  - usermod -aG docker deployer
+  - mkdir /home/deployer/docker/homer -p
+  - chown deployer:deployer /home/deployer/docker -R
+  - mkdir /home/deployer/docker/victoria-logs/victoria-logs-data -p
+  - chown -R deployer:deployer /home/deployer/docker/victoria-logs
+  - mkdir /home/deployer/docker/vector -p
+  - chown -R deployer:deployer /home/deployer/docker/vector
+  - echo "${compose}" | base64 -d > /home/deployer/docker/compose.yaml
+  - echo "${vector}" | base64 -d > /home/deployer/docker/vector/vector.yaml
+  - cd /home/deployer/docker/ && docker compose up -d
+
   # Configure UFW firewall
   - ufw --force enable
   - ufw default deny incoming
   - ufw default allow outgoing
-  - ufw allow ssh
-  - ufw allow 2233/tcp
-  
+  - ufw allow 22/tcp
+  - ufw allow from 127.0.0.1 to any port 8080 proto tcp
+  - ufw allow from 172.17.0.0/16 to any port 8080 proto tcp
+  - ufw allow 9428/tcp
+  - ufw allow 8094/tcp
+
   # Configure fail2ban for SSH protection
   - systemctl enable fail2ban
   - systemctl start fail2ban
@@ -56,12 +92,6 @@ runcmd:
   - systemctl daemon-reload
   - systemctl restart ssh.socket
   - systemctl restart ssh
-  
-  # Set proper permissions for SSH directory
-  - mkdir -p /home/deployer/.ssh
-  - chmod 700 /home/deployer/.ssh
-  - chmod 600 /home/deployer/.ssh/authorized_keys
-  - chown -R deployer:deployer /home/deployer/.ssh
 
   # Configure Ukrainian locale
   - locale-gen uk_UA.UTF-8
@@ -71,9 +101,6 @@ runcmd:
   # Set timezone and enable NTP
   - timedatectl set-timezone Europe/Kyiv
   - timedatectl set-ntp on
-
-   # Set hostname
-  - hostnamectl set-hostname terraform-server
 
 # Reboot after setup 
 power_state:
