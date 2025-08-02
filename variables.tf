@@ -22,3 +22,11 @@ variable "server_type" {
 variable "os_type" {
   default = "ubuntu-24.04"
 }
+
+variable "docker_compose_file" {
+  default = "./compose.yaml"
+}
+
+variable "vector_config_file" {
+  default = "./vector.yaml"
+}
