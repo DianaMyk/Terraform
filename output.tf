@@ -3,3 +3,8 @@ output "ssh_key" {
   value       = tls_private_key.pk-rsa.private_key_pem
   sensitive = true
 }
+
+output "server_ip" {
+  description = "Public IPv4 address of the provisioned server"
+  value       = hcloud_server.main.ipv4_address
+}
