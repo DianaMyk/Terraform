@@ -32,21 +32,10 @@ resource "hcloud_firewall" "firewall_terraform" {
   rule {
     direction  = "in"
     protocol   = "tcp"
-    port       = "9428"
-    source_ips = ["0.0.0.0/0"]
+    port       = "443"
+    source_ips = [
+      "0.0.0.0/0",
+      "::/0"
+     ]
   }
-
-  rule {
-    direction  = "in"
-    protocol   = "tcp"
-    port       = "8094"
-    source_ips = ["0.0.0.0/0"]
-  }
-
-  rule {
-    direction  = "in"
-    protocol   = "tcp"
-    port       = "8080"
-    source_ips = ["127.0.0.1", "172.0.0.0/8"]
-  }
-}
+ }
