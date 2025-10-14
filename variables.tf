@@ -30,3 +30,41 @@ variable "docker_compose_file" {
 variable "vector_config_file" {
   default = "./vector.yaml"
 }
+
+variable "cloudflare_api_token" {
+  sensitive = true
+}
+
+variable "cloudflare_zone_id" {
+  sensitive = true
+}
+
+variable "domain_homer" {
+  description = "Domain for Homer dashboard"
+  type        = string
+  default     = "homer.dimykytyn.win"
+}
+
+variable "domain_logs" {
+  description = "Domain for Victoria Logs"
+  type        = string
+  default     = "logs.dimykytyn.win"
+}
+
+variable "ssl_email" {
+  description = "Email for Let's Encrypt certificates"
+  type        = string
+  default     = "mykytyn.di@gmail.com"
+}
+
+variable "nginx_homer_conf" {
+  description = "Path to nginx homer configuration file"
+  type        = string
+  default     = "./nginx/conf/homer.conf"
+}
+
+variable "nginx_logs_conf" {
+  description = "Path to nginx logs configuration file"
+  type        = string
+  default     = "./nginx/conf/logs.conf"
+}

@@ -41,3 +41,28 @@ services:
     depends_on:
       victorialogs:
         condition: service_healthy
+
+  nginx:
+    image: nginx:latest
+    container_name: nginx-proxy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf:/etc/nginx/conf.d
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    depends_on:
+      - certbot
+      - homer 
+      - victorialogs
+
+  certbot:
+    image: certbot/certbot
+    container_name: certbot
+    restart: always
+    volumes:
+      - ./certbot/www:/var/www/certbot
+      - ./certbot/conf:/etc/letsencrypt
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"

@@ -64,25 +64,41 @@ runcmd:
   - systemctl enable docker
   - systemctl start docker
   - usermod -aG docker deployer
+
   - mkdir /home/deployer/docker/homer -p
   - chown deployer:deployer /home/deployer/docker -R
   - mkdir /home/deployer/docker/victoria-logs/victoria-logs-data -p
   - chown -R deployer:deployer /home/deployer/docker/victoria-logs
   - mkdir /home/deployer/docker/vector -p
   - chown -R deployer:deployer /home/deployer/docker/vector
+  - mkdir -p /home/deployer/docker/nginx/conf
+  - mkdir -p /home/deployer/docker/nginx/certbot/conf
+  - mkdir -p /home/deployer/docker/nginx/certbot/www
+  - chown -R deployer:deployer /home/deployer/docker
+
   - echo "${compose}" | base64 -d > /home/deployer/docker/compose.yaml
-  - echo "${vector}" | base64 -d > /home/deployer/docker/vector/vector.yaml
+  - echo "${vector}"| base64 -d > /home/deployer/docker/vector/vector.yaml
+  - echo "${nginx_homer}" | base64 -d > /home/deployer/docker/nginx/conf/homer.conf
   - cd /home/deployer/docker/ && docker compose up -d
+
+  # Nginx setup
+  - systemctl stop nginx
+  - rm -f /etc/nginx/sites-enabled/default
+  - ln -s /etc/nginx/sites-available/homer /etc/nginx/sites-enabled/
+  # - ln -s /etc/nginx/sites-available/logs /etc/nginx/sites-enabled/
+  - nginx -t
+  - systemctl enable nginx
+  - systemctl start nginx
 
   # Configure UFW firewall
   - ufw --force enable
-  - ufw default deny incoming
   - ufw default allow outgoing
   - ufw allow 22/tcp
   - ufw allow from 127.0.0.1 to any port 8080 proto tcp
   - ufw allow from 172.17.0.0/16 to any port 8080 proto tcp
   - ufw allow 9428/tcp
   - ufw allow 8094/tcp
+  - ufw allow 'Nginx HTTP'
 
   # Configure fail2ban for SSH protection
   - systemctl enable fail2ban
