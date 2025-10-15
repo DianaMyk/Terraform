@@ -2,6 +2,7 @@ services:
   homer:
     image: b4bz/homer
     container_name: homer
+    hostname: homer
     volumes:
       - /homer:/www/assets
     ports:
@@ -10,6 +11,8 @@ services:
     environment:
       - INIT_ASSETS=1
     restart: unless-stopped
+    networks:
+      - proxy_net
 
   victorialogs:
     image: victoriametrics/victoria-logs:v1.25.0
@@ -25,6 +28,8 @@ services:
       interval: 1s
       timeout: 1s
       retries: 10
+    networks:
+      - proxy_net
 
   vector:
     image: timberio/vector:latest-debian
@@ -41,6 +46,8 @@ services:
     depends_on:
       victorialogs:
         condition: service_healthy
+    networks:
+      - proxy_net
 
   nginx:
     image: nginx:latest
@@ -51,18 +58,12 @@ services:
       - "443:443"
     volumes:
       - ./nginx/conf:/etc/nginx/conf.d
-      - ./certbot/conf:/etc/letsencrypt
-      - ./certbot/www:/var/www/certbot
     depends_on:
-      - certbot
       - homer 
       - victorialogs
-
-  certbot:
-    image: certbot/certbot
-    container_name: certbot
-    restart: always
-    volumes:
-      - ./certbot/www:/var/www/certbot
-      - ./certbot/conf:/etc/letsencrypt
-    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+    networks:
+      - proxy_net
+    
+networks:
+  proxy_net:
+    driver: bridge
