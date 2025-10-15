@@ -79,16 +79,8 @@ runcmd:
   - echo "${compose}" | base64 -d > /home/deployer/docker/compose.yaml
   - echo "${vector}"| base64 -d > /home/deployer/docker/vector/vector.yaml
   - echo "${nginx_homer}" | base64 -d > /home/deployer/docker/nginx/conf/homer.conf
+  - echo "${logs_homer}" | base64 -d > /home/deployer/docker/nginx/conf/logs.conf
   - cd /home/deployer/docker/ && docker compose up -d
-
-  # Nginx setup
-  - systemctl stop nginx
-  - rm -f /etc/nginx/sites-enabled/default
-  - ln -s /etc/nginx/sites-available/homer /etc/nginx/sites-enabled/
-  # - ln -s /etc/nginx/sites-available/logs /etc/nginx/sites-enabled/
-  - nginx -t
-  - systemctl enable nginx
-  - systemctl start nginx
 
   # Configure UFW firewall
   - ufw --force enable
@@ -99,6 +91,14 @@ runcmd:
   - ufw allow 9428/tcp
   - ufw allow 8094/tcp
   - ufw allow 'Nginx HTTP'
+
+  # Nginx setup
+  - systemctl stop nginx
+  - rm -f /etc/nginx/sites-enabled/default
+  - ln -s /etc/nginx/sites-available/homer /etc/nginx/sites-enabled/
+  - nginx -t
+  - systemctl enable nginx
+  - systemctl start nginx
 
   # Configure fail2ban for SSH protection
   - systemctl enable fail2ban
