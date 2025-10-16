@@ -1,4 +1,35 @@
 services:
+  certbot:
+    image: certbot/certbot:latest
+    container_name: certbot
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+      - ./cloudflare.ini:/cloudflare.ini:ro
+    environment:
+      - CF_DNS_API_TOKEN=${cloudflare_api_token}
+    command: >
+      sh -c "
+      certbot certonly --dns-cloudflare
+        --dns-cloudflare-credentials /cloudflare.ini
+        -d homer.dimykytyn.win
+        -d logs.dimykytyn.win
+        --email mykytyn.di@gmail.com
+        --agree-tos
+        --no-eff-email
+        --non-interactive
+      || true;
+      echo 'Starting renew loop...';
+      while :; do
+        certbot renew --dns-cloudflare --dns-cloudflare-credentials /cloudflare.ini --quiet;
+        nginx -s reload 2>/dev/null || true;
+        sleep 12h;
+      done
+      "
+    restart: unless-stopped
+    networks:
+      - proxy_net
+
   homer:
     image: b4bz/homer
     container_name: homer
@@ -58,7 +89,10 @@ services:
       - "443:443"
     volumes:
       - ./nginx/conf:/etc/nginx/conf.d
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
     depends_on:
+      - certbot
       - homer 
       - victorialogs
     networks:
