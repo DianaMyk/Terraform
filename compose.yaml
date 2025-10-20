@@ -1,31 +1,27 @@
 services:
   certbot:
-    image: certbot/certbot:latest
+    image: certbot/dns-cloudflare:latest
     container_name: certbot
     volumes:
+    volumes:
+      - /home/deployer/docker/cloudflare.ini:/cloudflare.ini:ro
       - ./certbot/conf:/etc/letsencrypt
       - ./certbot/www:/var/www/certbot
-      - ./cloudflare.ini:/cloudflare.ini:ro
-    environment:
-      - CF_DNS_API_TOKEN=${cloudflare_api_token}
     command: >
-      sh -c "
-      certbot certonly --dns-cloudflare
-        --dns-cloudflare-credentials /cloudflare.ini
-        -d homer.dimykytyn.win
-        -d logs.dimykytyn.win
-        --email mykytyn.di@gmail.com
-        --agree-tos
-        --no-eff-email
-        --non-interactive
-      || true;
+      sh -c "certbot certonly --dns-cloudflare \
+        --dns-cloudflare-credentials /cloudflare.ini \
+        --dns-cloudflare-propagation-seconds 60 \
+        -d homer.dimykytyn.win \
+        -d logs.dimykytyn.win \
+        --email mykytyn.di@gmail.com \
+        --agree-tos \
+        --no-eff-email \
+        --non-interactive || true;
       echo 'Starting renew loop...';
       while :; do
-        certbot renew --dns-cloudflare --dns-cloudflare-credentials /cloudflare.ini --quiet;
-        nginx -s reload 2>/dev/null || true;
-        sleep 12h;
-      done
-      "
+          certbot renew --dns-cloudflare --dns-cloudflare-credentials /cloudflare.ini --quiet;
+          sleep 12h;
+        done"
     restart: unless-stopped
     networks:
       - proxy_net

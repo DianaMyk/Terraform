@@ -68,3 +68,9 @@ variable "nginx_logs_conf" {
   type        = string
   default     = "./nginx/conf/logs.conf"
 }
+
+variable "cloudflare_ini" {
+  description = "Path to ini file"
+  type        = string
+  default     = "./cloudflare.ini"
+}
