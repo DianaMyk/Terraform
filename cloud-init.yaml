@@ -49,18 +49,6 @@ write_files:
     content: |
       {{ }}
   
-  - path: /home/deployer/docker/cloudflare.ini
-    permissions: '0600'
-    owner: deployer:deployer
-    content: |
-      dns_cloudflare_api_token = ${CF_API_TOKEN}
-    
-  - path: /home/deployer/docker/.env
-    owner: deployer:deployer
-    permissions: '0600'
-    content: |
-      CF_API_TOKEN=${CF_API_TOKEN}
-
 runcmd:
   - mkdir -p /home/deployer/.ssh
   - chmod 700 /home/deployer/.ssh
@@ -92,6 +80,9 @@ runcmd:
   - echo "${vector}"| base64 -d > /home/deployer/docker/vector/vector.yaml
   - echo "${nginx_homer}" | base64 -d > /home/deployer/docker/nginx/conf/homer.conf
   - echo "${nginx_logs}" | base64 -d > /home/deployer/docker/nginx/conf/logs.conf
+  - echo "${cloudflare_ini}"| base64 -d > /home/deployer/docker/cloudflare.ini
+  - chown deployer:deployer /home/deployer/docker/cloudflare.ini
+  - chmod 600 /home/deployer/docker/cloudflare.ini
   - cd /home/deployer/docker/ && docker compose up -d
 
   # Configure UFW firewall
