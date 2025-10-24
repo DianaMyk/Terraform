@@ -70,20 +70,27 @@ runcmd:
   - mkdir /home/deployer/docker/victoria-logs/victoria-logs-data -p
   - chown -R deployer:deployer /home/deployer/docker/victoria-logs
   - mkdir /home/deployer/docker/vector -p
-  - chown -R deployer:deployer /home/deployer/docker/vector
   - mkdir -p /home/deployer/docker/nginx/conf
   - mkdir -p /home/deployer/docker/nginx/certbot/conf
   - mkdir -p /home/deployer/docker/nginx/certbot/www
   - chown -R deployer:deployer /home/deployer/docker
 
+
+  - curl -sL https://raw.githubusercontent.com/certbot/certbot/master/certbot/certbot/ssl-dhparams.pem -o /home/deployer/docker/nginx/certbot/conf/ssl-dhparams.pem
+  - chmod 644 /home/deployer/docker/nginx/certbot/conf/ssl-dhparams.pem 
+
   - echo "${compose}" | base64 -d > /home/deployer/docker/compose.yaml
-  - echo "${vector}"| base64 -d > /home/deployer/docker/vector/vector.yaml
+  - echo "${vector}" | base64 -d > /home/deployer/docker/vector/vector.yaml
   - echo "${nginx_homer}" | base64 -d > /home/deployer/docker/nginx/conf/homer.conf
   - echo "${nginx_logs}" | base64 -d > /home/deployer/docker/nginx/conf/logs.conf
-  - echo "${cloudflare_ini}"| base64 -d > /home/deployer/docker/cloudflare.ini
-  - chown deployer:deployer /home/deployer/docker/cloudflare.ini
-  - chmod 600 /home/deployer/docker/cloudflare.ini
-  - cd /home/deployer/docker/ && docker compose up -d
+  - echo "${cloudflare_ini}" | base64 -d > /home/deployer/docker/cloudflare.ini
+
+  - cd /home/deployer/docker
+  - docker compose up certbot-init
+  - docker compose rm -f certbot-init
+  - docker compose up -d nginx homer victorialogs vector certbot
+ 
+
 
   # Configure UFW firewall
   - ufw --force enable
@@ -93,7 +100,6 @@ runcmd:
   - ufw allow from 172.17.0.0/16 to any port 8080 proto tcp
   - ufw allow 9428/tcp
   - ufw allow 8094/tcp
-  - ufw allow 'Nginx HTTP'
 
   # Nginx setup
   - systemctl stop nginx
