@@ -1,30 +1,4 @@
 services:
-  certbot:
-    image: certbot/dns-cloudflare:latest
-    container_name: certbot
-    volumes:
-    volumes:
-      - /home/deployer/docker/cloudflare.ini:/cloudflare.ini:ro
-      - ./certbot/conf:/etc/letsencrypt
-      - ./certbot/www:/var/www/certbot
-    command: >
-      sh -c "certbot certonly --dns-cloudflare \
-        --dns-cloudflare-credentials /cloudflare.ini \
-        --dns-cloudflare-propagation-seconds 60 \
-        -d homer.dimykytyn.win \
-        -d logs.dimykytyn.win \
-        --email mykytyn.di@gmail.com \
-        --agree-tos \
-        --no-eff-email \
-        --non-interactive || true;
-      echo 'Starting renew loop...';
-      while :; do
-          certbot renew --dns-cloudflare --dns-cloudflare-credentials /cloudflare.ini --quiet;
-          sleep 12h;
-        done"
-    restart: unless-stopped
-    networks:
-      - proxy_net
 
   homer:
     image: b4bz/homer
@@ -76,6 +50,35 @@ services:
     networks:
       - proxy_net
 
+  certbot-init:
+    image: certbot/certbot:latest
+    container_name: certbot-init
+    entrypoint: /bin/sh
+    command:
+    - -c
+    - |
+      if [ ! -d /etc/letsencrypt/live/homer.dimykytyn.win ]; then
+        echo "No existing certs found — requesting new certificates..."
+        certbot certonly \
+          --staging \
+          --standalone \
+          --non-interactive \
+          --agree-tos \
+          --no-eff-email \
+          --force-renewal \
+          -m mykytyn.di@gmail.com \
+          -d homer.dimykytyn.win \
+          -d logs.dimykytyn.win || exit 1
+      else
+        echo "Certificates already exist, skipping initialization."
+      fi
+    ports:
+      - "80:80"
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+    networks:
+      - proxy_net
+
   nginx:
     image: nginx:latest
     container_name: nginx-proxy
@@ -88,11 +91,67 @@ services:
       - ./certbot/conf:/etc/letsencrypt
       - ./certbot/www:/var/www/certbot
     depends_on:
-      - certbot
-      - homer 
-      - victorialogs
+      certbot-init:
+        condition: service_completed_successfully
+      homer:
+        condition: service_started
+      victorialogs:
+        condition: service_started
     networks:
       - proxy_net
+  
+
+  certbot:
+    image: certbot/certbot:latest
+    container_name: certbot
+    entrypoint: /bin/sh
+    command: -c '
+      echo "Starting renew loop...";
+      trap exit TERM;
+      while :; do
+        certbot renew --staging --quiet;
+        nginx -s reload 2>/dev/null || true;
+        sleep 12h;
+      done'
+    depends_on:
+      nginx:
+        condition: service_started
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    restart: unless-stopped
+    networks:
+      - proxy_net
+
+
+  # certbot:
+  #   image: certbot/certbot:latest
+  #   container_name: certbot
+  #   volumes:
+  #     - ./certbot/conf:/etc/letsencrypt
+  #     - ./certbot/www:/var/www/certbot
+  #   command: >
+  #     sh -c "
+  #       certbot certonly --webroot
+  #       --webroot-path /var/www/certbot
+  #       -d homer.dimykytyn.win
+  #       -d logs.dimykytyn.win
+  #       --email mykytyn.di@gmail.com
+  #       --agree-tos
+  #       --no-eff-email
+  #       --non-interactive
+  #       || true;
+  #       echo 'Starting renew loop...';
+  #       while :; do
+  #         certbot renew --quiet;
+  #         nginx -s reload 2>/dev/null || true;
+  #         sleep 12h;
+  #       done
+  #     "
+  #   restart: unless-stopped
+  #   networks:
+  #     - proxy_net
+
     
 networks:
   proxy_net:
