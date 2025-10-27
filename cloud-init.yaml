@@ -44,11 +44,6 @@ write_files:
     permissions: '0644'
     owner: root:root
   
-  - path: /etc/apt/keyrings/docker.gpg
-    encoding: base64
-    content: |
-      {{ }}
-  
 runcmd:
   - mkdir -p /home/deployer/.ssh
   - chmod 700 /home/deployer/.ssh
@@ -63,7 +58,6 @@ runcmd:
   - apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
   - systemctl enable docker
   - systemctl start docker
-  - usermod -aG docker deployer
 
   - mkdir /home/deployer/docker/homer -p
   - chown deployer:deployer /home/deployer/docker -R
@@ -95,14 +89,6 @@ runcmd:
   - ufw allow from 172.17.0.0/16 to any port 8080 proto tcp
   - ufw allow 9428/tcp
   - ufw allow 8094/tcp
-
-  # Nginx setup
-  - systemctl stop nginx
-  - rm -f /etc/nginx/sites-enabled/default
-  - ln -s /etc/nginx/sites-available/homer /etc/nginx/sites-enabled/
-  - nginx -t
-  - systemctl enable nginx
-  - systemctl start nginx
 
   # Configure fail2ban for SSH protection
   - systemctl enable fail2ban
