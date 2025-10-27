@@ -24,5 +24,3 @@ terraform.rc
 **/.terraform.lock.hcl
 
 **/.DS_Store
-
-cloudflare.ini

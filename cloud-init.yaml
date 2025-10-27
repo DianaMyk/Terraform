@@ -43,7 +43,7 @@ write_files:
       Protocol 2
     permissions: '0644'
     owner: root:root
-
+  
   - path: /etc/apt/keyrings/docker.gpg
     encoding: base64
     content: |
@@ -75,15 +75,10 @@ runcmd:
   - mkdir -p /home/deployer/docker/nginx/certbot/www
   - chown -R deployer:deployer /home/deployer/docker
 
-
-  - curl -sL https://raw.githubusercontent.com/certbot/certbot/master/certbot/certbot/ssl-dhparams.pem -o /home/deployer/docker/nginx/certbot/conf/ssl-dhparams.pem
-  - chmod 644 /home/deployer/docker/nginx/certbot/conf/ssl-dhparams.pem 
-
   - echo "${compose}" | base64 -d > /home/deployer/docker/compose.yaml
   - echo "${vector}" | base64 -d > /home/deployer/docker/vector/vector.yaml
   - echo "${nginx_homer}" | base64 -d > /home/deployer/docker/nginx/conf/homer.conf
   - echo "${nginx_logs}" | base64 -d > /home/deployer/docker/nginx/conf/logs.conf
-  - echo "${cloudflare_ini}" | base64 -d > /home/deployer/docker/cloudflare.ini
 
   - cd /home/deployer/docker
   - docker compose up certbot-init
